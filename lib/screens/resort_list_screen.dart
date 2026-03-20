@@ -1,116 +1,162 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../data/resorts_data.dart';
 import '../models/resort.dart';
 import 'inspection_form_screen.dart';
 
-class ResortListScreen extends StatelessWidget {
+class ResortListScreen extends StatefulWidget {
   const ResortListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final grouped = resortsByArea;
-    final areas = grouped.keys.toList();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Beach Resort Inspections'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(36),
-          child: Container(
-            color: const Color(0xFF0F2A50),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              '${allResorts.length} resorts across ${areas.length} areas',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: areas.length,
-        itemBuilder: (context, areaIndex) {
-          final area = areas[areaIndex];
-          final resorts = grouped[area]!;
-          return _AreaSection(area: area, resorts: resorts);
-        },
-      ),
-    );
-  }
+  State<ResortListScreen> createState() => _ResortListScreenState();
 }
 
-class _AreaSection extends StatelessWidget {
-  final String area;
-  final List<Resort> resorts;
+class _ResortListScreenState extends State<ResortListScreen> {
+  // Stores star ratings for each resort by id
+  final Map<int, int> _ratings = {};
 
-  const _AreaSection({required this.area, required this.resorts});
+  void updateRating(int resortId, int stars) {
+    setState(() => _ratings[resortId] = stars);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 8),
-          child: Row(children: [
-            Container(
-              width: 4, height: 20,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F6E56),
-                borderRadius: BorderRadius.circular(2)
-              )
-            ),
-            const SizedBox(width: 8),
-            Text(area, style: const TextStyle(
-              fontSize: 15,
+    final resorts = allResorts;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('SGLR Rating')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // RESORTS heading
+          const Text(
+            'RESORTS',
+            style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1B3A6B)
-            )),
-            const SizedBox(width: 8),
-            Text('(${resorts.length})',
-              style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          ]),
-        ),
-        ...resorts.map((resort) => _ResortTile(resort: resort)),
-      ],
+              decoration: TextDecoration.underline,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          ...resorts.map(
+            (resort) => _ResortTile(
+              resort: resort,
+              stars: _ratings[resort.id],
+              onRatingUpdated: updateRating,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _ResortTile extends StatelessWidget {
   final Resort resort;
+  final int? stars;
+  final void Function(int resortId, int stars) onRatingUpdated;
 
-  const _ResortTile({required this.resort});
+  const _ResortTile({
+    required this.resort,
+    required this.stars,
+    required this.onRatingUpdated,
+  });
 
   @override
   Widget build(BuildContext context) {
     final bool isUC = resort.roomCount == 0;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: isUC ? Colors.grey.shade200 : const Color(0xFF1B3A6B),
-          child: Text('${resort.id}', style: TextStyle(
-            color: isUC ? Colors.grey : Colors.white,
-            fontSize: 12, fontWeight: FontWeight.bold)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
         ),
-        title: Text(resort.name, style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: isUC ? Colors.grey : null)),
-        subtitle: Text(
-          isUC ? 'Under construction'
-            : '${resort.ownerName} • ${resort.roomCount} rooms',
-          style: TextStyle(fontSize: 12,
-            color: isUC ? Colors.grey : Colors.grey.shade600)),
+        leading: CircleAvatar(
+          backgroundColor: isUC
+              ? Colors.grey.shade300
+              : const Color(0xFF1B3A6B),
+          child: Text(
+            '${resort.id}',
+            style: TextStyle(
+              color: isUC ? Colors.grey : Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Text(
+              resort.name,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: isUC ? Colors.grey : Colors.black,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Show stars if rated, else show "Unrated"
+            stars != null
+                ? RatingBarIndicator(
+                    rating: stars!.toDouble(),
+                    itemBuilder: (_, __) =>
+                        const Icon(Icons.star, color: Color(0xFFFFB800)),
+                    itemCount: 5,
+                    itemSize: 18,
+                  )
+                : const Text(
+                    '(Unrated)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'AREA: ${resort.area}',
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+              ),
+              Text(
+                'MANAGER: ${resort.ownerName.isEmpty ? 'N/A' : resort.ownerName}',
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+              ),
+              Text(
+                'Rooms: ${resort.roomCount == 0 ? 'Under Construction' : resort.roomCount.toString()}',
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+              ),
+            ],
+          ),
+        ),
         trailing: isUC
-          ? const Chip(label: Text('U/C', style: TextStyle(fontSize: 11)))
-          : const Icon(Icons.chevron_right, color: Color(0xFF1B3A6B)),
-        onTap: isUC ? null : () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) =>
-            InspectionFormScreen(resort: resort))),
+            ? const Chip(label: Text('U/C', style: TextStyle(fontSize: 11)))
+            : const Icon(Icons.chevron_right, color: Color(0xFF1B3A6B)),
+        onTap: isUC
+            ? null
+            : () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InspectionFormScreen(
+                      resort: resort,
+                      onInspectionComplete: (stars) =>
+                          onRatingUpdated(resort.id, stars),
+                    ),
+                  ),
+                );
+              },
       ),
     );
   }
