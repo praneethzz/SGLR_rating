@@ -3,13 +3,13 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../models/resort.dart';
 import '../models/inspection.dart';
 import '../data/checklist_data.dart';
+import '../services/storage_service.dart';
 import 'confirmation_screen.dart';
 
 class RatingScreen extends StatefulWidget {
   final Resort resort;
   final Map<String, bool> answers;
   final int totalMarks, maxMarks;
-  final void Function(int stars) onInspectionComplete;
 
   const RatingScreen({
     super.key,
@@ -17,7 +17,6 @@ class RatingScreen extends StatefulWidget {
     required this.answers,
     required this.totalMarks,
     required this.maxMarks,
-    required this.onInspectionComplete,
   });
 
   @override
@@ -26,16 +25,16 @@ class RatingScreen extends StatefulWidget {
 
 class _RatingScreenState extends State<RatingScreen> {
   final _notesController = TextEditingController();
+  bool _submitting = false;
 
   int get _stars => InspectionResult.calculateStars(widget.totalMarks);
-
   double get _pct => (widget.totalMarks / widget.maxMarks) * 100;
 
   Color get _scoreColor => _pct >= 85
-      ? Colors.green.shade700
+      ? const Color(0xFF166534)
       : _pct >= 65
-      ? Colors.amber.shade700
-      : Colors.red.shade700;
+      ? const Color(0xFFB45309)
+      : const Color(0xFF991B1B);
 
   String get _grade =>
       ['Poor', 'Below Average', 'Average', 'Good', 'Excellent'][_stars - 1];
@@ -46,10 +45,13 @@ class _RatingScreenState extends State<RatingScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submitInspection() async {
+    setState(() => _submitting = true);
+
     final result = InspectionResult(
       resortName: widget.resort.name,
       area: widget.resort.area,
+      resortId: widget.resort.id,
       dateTime: DateTime.now(),
       checklistAnswers: widget.answers,
       totalMarks: widget.totalMarks,
@@ -58,8 +60,14 @@ class _RatingScreenState extends State<RatingScreen> {
       notes: _notesController.text.trim(),
     );
 
-    widget.onInspectionComplete(_stars);
+    // Save result, set status to pending, clear draft
+    await StorageService.saveInspectionResult(widget.resort.id, result);
+    await StorageService.setResortStatus(widget.resort.id, 'pending');
+    await StorageService.clearDraft(widget.resort.id);
 
+    if (!mounted) return;
+
+    // Navigate to confirmation, clear form and rating from stack
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => ConfirmationScreen(result: result)),
@@ -89,7 +97,7 @@ class _RatingScreenState extends State<RatingScreen> {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1B3A6B),
+                        color: Color(0xFF0D5C63),
                       ),
                     ),
                     Text(
@@ -122,7 +130,7 @@ class _RatingScreenState extends State<RatingScreen> {
                     const SizedBox(height: 16),
                     RatingBarIndicator(
                       rating: _stars.toDouble(),
-                      itemBuilder: (_, _) =>
+                      itemBuilder: (_, __) =>
                           const Icon(Icons.star, color: Color(0xFFFFB800)),
                       itemCount: 5,
                       itemSize: 36,
@@ -142,13 +150,13 @@ class _RatingScreenState extends State<RatingScreen> {
 
             const SizedBox(height: 16),
 
-            // Breakdown
+            // Score breakdown
             const Text(
               'Score Breakdown',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1B3A6B),
+                color: Color(0xFF0D5C63),
               ),
             ),
             const SizedBox(height: 8),
@@ -167,13 +175,13 @@ class _RatingScreenState extends State<RatingScreen> {
 
             const SizedBox(height: 20),
 
-            // Notes
+            // Officer notes
             const Text(
               'Officer Notes (optional)',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1B3A6B),
+                color: Color(0xFF0D5C63),
               ),
             ),
             const SizedBox(height: 8),
@@ -193,14 +201,26 @@ class _RatingScreenState extends State<RatingScreen> {
 
             const SizedBox(height: 24),
 
+            // Submit button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _submit,
-                icon: const Icon(Icons.check_circle, size: 20),
-                label: const Text(
-                  'Submit Inspection',
-                  style: TextStyle(fontSize: 16),
+                onPressed: _submitting ? null : _submitInspection,
+                icon: _submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.send, size: 20),
+                label: Text(
+                  _submitting
+                      ? 'Submitting...'
+                      : 'Submit to District Committee',
+                  style: const TextStyle(fontSize: 16),
                 ),
               ),
             ),

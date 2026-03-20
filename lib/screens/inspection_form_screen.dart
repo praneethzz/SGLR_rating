@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/resort.dart';
 import '../data/checklist_data.dart';
+import '../services/storage_service.dart';
 import 'rating_screen.dart';
 
 class InspectionFormScreen extends StatefulWidget {
   final Resort resort;
-  final void Function(int stars) onInspectionComplete;
+  final Map<String, bool>? draftAnswers;
 
   const InspectionFormScreen({
     super.key,
     required this.resort,
-    required this.onInspectionComplete,
+    this.draftAnswers,
   });
 
   @override
@@ -18,13 +19,35 @@ class InspectionFormScreen extends StatefulWidget {
 }
 
 class _InspectionFormScreenState extends State<InspectionFormScreen> {
-  final Map<String, bool> _answers = {};
+  late Map<String, bool> _answers;
+  bool _showDraftBanner = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.draftAnswers != null && widget.draftAnswers!.isNotEmpty) {
+      _answers = Map.from(widget.draftAnswers!);
+      _showDraftBanner = true;
+      // Auto-dismiss banner after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _showDraftBanner = false);
+      });
+    } else {
+      _answers = {};
+    }
+  }
 
   int get _totalMarks => allChecklistItems
       .where((i) => _answers[i.id] == true)
       .fold(0, (s, i) => s + i.marks);
 
   int get _maxMarks => allChecklistItems.fold(0, (s, i) => s + i.marks);
+
+  void _onAnswerChanged(String id, bool val) {
+    setState(() => _answers[id] = val);
+    // Auto-save draft in background
+    StorageService.saveDraft(widget.resort.id, _answers);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,20 +65,43 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Draft restored banner
+          if (_showDraftBanner)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFD97706)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.restore, color: Color(0xFF92400E), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Draft restored — tap to continue where you left off.',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           ...categories.map((cat) {
             final items = grouped[cat]!;
             final catMax = maxMarksForCategory(cat);
             final catScored = items
                 .where((i) => _answers[i.id] == true)
                 .fold(0, (s, i) => s + i.marks);
-
             return _CategorySection(
               category: cat,
               items: items,
               answers: _answers,
               scored: catScored,
               max: catMax,
-              onChanged: (id, val) => setState(() => _answers[id] = val),
+              onChanged: _onAnswerChanged,
             );
           }),
           const SizedBox(height: 80),
@@ -72,7 +118,6 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
               answers: Map.from(_answers),
               totalMarks: _totalMarks,
               maxMarks: _maxMarks,
-              onInspectionComplete: widget.onInspectionComplete,
             ),
           ),
         ),
@@ -91,7 +136,7 @@ class _ScoreBanner extends StatelessWidget {
     final pct = max > 0 ? scored / max : 0.0;
 
     return Container(
-      color: const Color(0xFF0F2A50),
+      color: const Color(0xFF094449),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Column(
         children: [
@@ -159,7 +204,7 @@ class _CategorySection extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1B3A6B),
+            color: const Color(0xFF0D5C63),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -237,14 +282,14 @@ class _ChecklistRow extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1B3A6B).withOpacity(0.1),
+                          color: const Color(0xFF0D5C63).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '${item.marks} marks',
                           style: const TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF1B3A6B),
+                            color: Color(0xFF0D5C63),
                             fontWeight: FontWeight.w600,
                           ),
                         ),

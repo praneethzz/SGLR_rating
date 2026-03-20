@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../data/resorts_data.dart';
 import '../models/resort.dart';
+import '../services/storage_service.dart';
 import 'inspection_form_screen.dart';
 
 class ResortListScreen extends StatefulWidget {
@@ -12,64 +13,134 @@ class ResortListScreen extends StatefulWidget {
 }
 
 class _ResortListScreenState extends State<ResortListScreen> {
-  // Stores star ratings for each resort by id
-  final Map<int, int> _ratings = {};
+  Map<int, String> _resortStatuses = {};
+  bool _loading = true;
 
-  void updateRating(int resortId, int stars) {
-    setState(() => _ratings[resortId] = stars);
+  @override
+  void initState() {
+    super.initState();
+    _loadStatuses();
+  }
+
+  Future<void> _loadStatuses() async {
+    final Map<int, String> statuses = {};
+    for (final resort in allResorts) {
+      statuses[resort.id] = await StorageService.getResortStatus(resort.id);
+    }
+    if (mounted) {
+      setState(() {
+        _resortStatuses = statuses;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _openInspection(Resort resort) async {
+    final draft = await StorageService.loadDraft(resort.id);
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            InspectionFormScreen(resort: resort, draftAnswers: draft),
+      ),
+    );
+    _loadStatuses();
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final resorts = allResorts;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('SGLR Rating')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // RESORTS heading
-          const Text(
-            'RESORTS',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          ...resorts.map(
-            (resort) => _ResortTile(
-              resort: resort,
-              stars: _ratings[resort.id],
-              onRatingUpdated: updateRating,
-            ),
-          ),
-        ],
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: const Text('SGLR Rating'),
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFF0D5C63),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // RESORTS heading
+                const Text(
+                  'RESORTS',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Flat resort list
+                ...allResorts.map((resort) {
+                  final status = _resortStatuses[resort.id] ?? 'unrated';
+                  return _ResortTile(
+                    resort: resort,
+                    status: status,
+                    onTap: () {
+                      if (resort.roomCount == 0) return;
+                      if (status == 'pending') {
+                        _showSnackBar(
+                          'This inspection is pending District Committee approval. No changes can be made.',
+                        );
+                      } else if (status == 'approved') {
+                        _showSnackBar(
+                          'This resort has an approved rating. Inspection is closed for this cycle.',
+                        );
+                      } else {
+                        _openInspection(resort);
+                      }
+                    },
+                  );
+                }),
+              ],
+            ),
     );
   }
 }
 
 class _ResortTile extends StatelessWidget {
   final Resort resort;
-  final int? stars;
-  final void Function(int resortId, int stars) onRatingUpdated;
+  final String status;
+  final VoidCallback onTap;
 
   const _ResortTile({
     required this.resort,
-    required this.stars,
-    required this.onRatingUpdated,
+    required this.status,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final bool isUC = resort.roomCount == 0;
 
+    // Avatar colour based on status
+    Color avatarColor;
+    if (isUC) {
+      avatarColor = Colors.grey.shade300;
+    } else if (status == 'pending') {
+      avatarColor = const Color(0xFFD97706);
+    } else if (status == 'approved') {
+      avatarColor = const Color(0xFF166534);
+    } else {
+      avatarColor = const Color(0xFF0D5C63);
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
+      color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
       child: ListTile(
@@ -77,10 +148,10 @@ class _ResortTile extends StatelessWidget {
           horizontal: 16,
           vertical: 10,
         ),
+
+        // Number avatar
         leading: CircleAvatar(
-          backgroundColor: isUC
-              ? Colors.grey.shade300
-              : const Color(0xFF1B3A6B),
+          backgroundColor: avatarColor,
           child: Text(
             '${resort.id}',
             style: TextStyle(
@@ -90,73 +161,103 @@ class _ResortTile extends StatelessWidget {
             ),
           ),
         ),
+
+        // Title: name + stars or unrated
         title: Row(
           children: [
             Text(
               resort.name,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 15,
                 color: isUC ? Colors.grey : Colors.black,
               ),
             ),
             const SizedBox(width: 8),
-            // Show stars if rated, else show "Unrated"
-            stars != null
-                ? RatingBarIndicator(
-                    rating: stars!.toDouble(),
-                    itemBuilder: (_, __) =>
-                        const Icon(Icons.star, color: Color(0xFFFFB800)),
-                    itemCount: 5,
-                    itemSize: 18,
-                  )
-                : const Text(
-                    '(Unrated)',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
-                    ),
+            if (isUC)
+              const SizedBox()
+            else if (status == 'approved')
+              RatingBarIndicator(
+                rating: 0,
+                itemBuilder: (_, __) =>
+                    const Icon(Icons.star, color: Color(0xFFFFB800)),
+                itemCount: 5,
+                itemSize: 16,
+              )
+            else if (status == 'pending')
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Pending',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF92400E),
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+              )
+            else
+              const Text(
+                '(Unrated)',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
           ],
         ),
+
+        // Subtitle: area, manager, rooms
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'AREA: ${resort.area}',
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
-              ),
-              Text(
-                'MANAGER: ${resort.ownerName.isEmpty ? 'N/A' : resort.ownerName}',
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
-              ),
-              Text(
-                'Rooms: ${resort.roomCount == 0 ? 'Under Construction' : resort.roomCount.toString()}',
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
-              ),
-            ],
-          ),
+          child: isUC
+              ? const Text(
+                  'Under construction',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AREA: ${resort.area}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'MANAGER: ${resort.ownerName.isEmpty ? 'N/A' : resort.ownerName}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'Rooms: ${resort.roomCount}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
         ),
+
+        // Trailing icon
         trailing: isUC
             ? const Chip(label: Text('U/C', style: TextStyle(fontSize: 11)))
-            : const Icon(Icons.chevron_right, color: Color(0xFF1B3A6B)),
-        onTap: isUC
-            ? null
-            : () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => InspectionFormScreen(
-                      resort: resort,
-                      onInspectionComplete: (stars) =>
-                          onRatingUpdated(resort.id, stars),
-                    ),
-                  ),
-                );
-              },
+            : status == 'pending'
+            ? const Icon(Icons.hourglass_empty, color: Color(0xFFD97706))
+            : status == 'approved'
+            ? const Icon(Icons.lock, color: Color(0xFF166534))
+            : const Icon(Icons.chevron_right, color: Color(0xFF0D5C63)),
+
+        onTap: isUC ? null : onTap,
       ),
     );
   }

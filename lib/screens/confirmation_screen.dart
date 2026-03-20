@@ -10,23 +10,29 @@ class ConfirmationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Inspection Submitted')),
+      appBar: AppBar(
+        title: const Text('Submitted for Approval'),
+        automaticallyImplyLeading: false,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            // Success icon
             const CircleAvatar(
               radius: 40,
-              backgroundColor: Color(0xFF0F6E56),
+              backgroundColor: Color(0xFF166534),
               child: Icon(Icons.check, color: Colors.white, size: 48),
             ),
             const SizedBox(height: 16),
+
+            // Heading
             const Text(
-              'Inspection Complete',
+              'Submitted for Approval',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1B3A6B),
+                color: Color(0xFF0D5C63),
               ),
             ),
             const SizedBox(height: 4),
@@ -40,6 +46,7 @@ class ConfirmationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            // Summary card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -47,11 +54,14 @@ class ConfirmationScreen extends StatelessWidget {
                   children: [
                     _Row('Date & Time', _fmt(result.dateTime)),
                     const Divider(height: 20),
+
                     _Row(
                       'Total Score',
-                      '${result.totalMarks} / ${result.maxMarks} (${result.percentage.toStringAsFixed(1)}%)',
+                      '${result.totalMarks} / ${result.maxMarks} '
+                          '(${result.percentage.toStringAsFixed(1)}%)',
                     ),
                     const Divider(height: 20),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -61,17 +71,53 @@ class ConfirmationScreen extends StatelessWidget {
                         ),
                         RatingBarIndicator(
                           rating: result.starRating.toDouble(),
-                          itemBuilder: (_, _) =>
+                          itemBuilder: (_, __) =>
                               const Icon(Icons.star, color: Color(0xFFFFB800)),
                           itemCount: 5,
                           itemSize: 22,
                         ),
                       ],
                     ),
+
                     if (result.notes.isNotEmpty) ...[
                       const Divider(height: 20),
                       _Row('Officer Notes', result.notes),
                     ],
+
+                    const Divider(height: 20),
+
+                    // Pending status badge
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFD97706)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.hourglass_empty,
+                            color: Color(0xFF92400E),
+                            size: 16,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Pending District Committee Approval',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF92400E),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -79,6 +125,7 @@ class ConfirmationScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
+            // Back to Resort List button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -87,9 +134,9 @@ class ConfirmationScreen extends StatelessWidget {
                 label: const Text('Back to Resort List'),
               ),
             ),
-
             const SizedBox(height: 12),
 
+            // Start new inspection
             TextButton(
               onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
               child: const Text('Start New Inspection'),
