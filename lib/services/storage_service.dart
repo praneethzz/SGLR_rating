@@ -92,6 +92,19 @@ class StorageService {
     await setResortStatus(resortId, 'approved');
   }
 
+  // Unfreezes an approved inspection — sets back to pending
+  static Future<void> unfreezeInspection(int resortId) async {
+    await setResortStatus(resortId, 'pending');
+  }
+
+  // Completely removes all data for a resort — back to unrated
+  static Future<void> removeInspection(int resortId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_statusKey(resortId));
+    await prefs.remove(_resultKey(resortId));
+    await prefs.remove(_draftKey(resortId));
+  }
+
   // Sends back for reevaluation — resets everything
   static Future<void> sendForReevaluation(int resortId) async {
     final prefs = await SharedPreferences.getInstance();

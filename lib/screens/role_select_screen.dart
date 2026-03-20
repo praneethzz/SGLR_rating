@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import 'resort_list_screen.dart';
 import 'district_committee_screen.dart';
 
@@ -8,161 +9,162 @@ class RoleSelectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: kBgPage,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
           child: Column(
             children: [
               const Spacer(flex: 2),
 
-              // App icon / logo area
+              // App icon
               Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D5C63),
+                  color: kBgCard,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: kCyan, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kCyan.withOpacity(0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.beach_access,
-                  color: Colors.white,
-                  size: 44,
-                ),
+                child: const Icon(Icons.beach_access, color: kCyan, size: 40),
               ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 28),
 
               // Title
               const Text(
-                'SGLR Beach Resort\nInspection',
-                textAlign: TextAlign.center,
+                'SGLR Beach Resort',
                 style: TextStyle(
+                  color: kOffWhite,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D5C63),
-                  height: 1.2,
                 ),
-              ),
-              const SizedBox(height: 8),
-
-              // Subtitle
-              const Text(
-                'Collector Office — Andhra Pradesh',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
-              const SizedBox(height: 16),
+              const Text(
+                'Inspection',
+                style: TextStyle(
+                  color: kCyan,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
 
-              // Divider
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: Color(0xFFCBD5E1))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(
-                      Icons.waves,
-                      color: const Color(0xFF0D5C63).withOpacity(0.4),
-                      size: 20,
-                    ),
-                  ),
-                  const Expanded(child: Divider(color: Color(0xFFCBD5E1))),
-                ],
+              const SizedBox(height: 20),
+
+              // Wave divider
+              const Text(
+                '~ ~ ~',
+                style: TextStyle(color: kCyan, fontSize: 16, letterSpacing: 6),
               ),
 
               const Spacer(flex: 2),
 
-              // Select role label
+              // Role label
               const Text(
-                'Select your role to continue',
+                'SELECT YOUR ROLE TO CONTINUE',
                 style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey,
-                  letterSpacing: 0.5,
+                  color: kMuted,
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+
               const SizedBox(height: 16),
 
               // Divisional Committee button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ResortListScreen()),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D5C63),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Column(
-                    children: [
-                      Text(
-                        'Divisional Committee',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Inspect & rate resorts',
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
-                      ),
-                    ],
-                  ),
+              _RoleButton(
+                title: 'Divisional Committee',
+                subtitle: 'Inspect & rate resorts',
+                filled: true,
+                onTap: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ResortListScreen()),
                 ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 14),
 
               // District Committee button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const DistrictCommitteeScreen(),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0D5C63),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Color(0xFF0D5C63), width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Column(
-                    children: [
-                      Text(
-                        'District Committee',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Review & approve ratings',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF0D5C63),
-                        ),
-                      ),
-                    ],
+              _RoleButton(
+                title: 'District Committee',
+                subtitle: 'Review & approve ratings',
+                filled: false,
+                onTap: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DistrictCommitteeScreen(),
                   ),
                 ),
               ),
 
-              const Spacer(flex: 3),
+              const Spacer(flex: 1),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class _RoleButton extends StatelessWidget {
+  final String title, subtitle;
+  final bool filled;
+  final VoidCallback onTap;
+
+  const _RoleButton({
+    required this.title,
+    required this.subtitle,
+    required this.filled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+      decoration: BoxDecoration(
+        color: filled ? kBgCard2 : kBgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kCyan, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: filled ? kOffWhite : kCyan,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: kMuted, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    ),
+  );
 }

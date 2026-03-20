@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import '../models/resort.dart';
 import '../data/checklist_data.dart';
 import '../services/storage_service.dart';
@@ -20,20 +21,21 @@ class InspectionFormScreen extends StatefulWidget {
 
 class _InspectionFormScreenState extends State<InspectionFormScreen> {
   late Map<String, bool> _answers;
-  bool _showDraftBanner = false;
 
   @override
   void initState() {
     super.initState();
+    _answers = Map.from(widget.draftAnswers ?? {});
     if (widget.draftAnswers != null && widget.draftAnswers!.isNotEmpty) {
-      _answers = Map.from(widget.draftAnswers!);
-      _showDraftBanner = true;
-      // Auto-dismiss banner after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _showDraftBanner = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Draft restored — continuing where you left off.'),
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       });
-    } else {
-      _answers = {};
     }
   }
 
@@ -43,287 +45,152 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
 
   int get _maxMarks => allChecklistItems.fold(0, (s, i) => s + i.marks);
 
-  void _onAnswerChanged(String id, bool val) {
+  Future<void> _toggle(String id, bool val) async {
     setState(() => _answers[id] = val);
-    // Auto-save draft in background
-    StorageService.saveDraft(widget.resort.id, _answers);
+    await StorageService.saveDraft(widget.resort.id, _answers);
   }
 
   @override
   Widget build(BuildContext context) {
     final grouped = itemsByCategory;
-    final categories = grouped.keys.toList();
+    final pct = _maxMarks > 0 ? _totalMarks / _maxMarks : 0.0;
 
     return Scaffold(
+      backgroundColor: kBgPage,
       appBar: AppBar(
+        backgroundColor: kAppBar,
         title: Text(widget.resort.name, overflow: TextOverflow.ellipsis),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
-          child: _ScoreBanner(scored: _totalMarks, max: _maxMarks),
+          child: Container(
+            color: kAppBarSub,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Score: $_totalMarks / $_maxMarks',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '${(pct * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: pct,
+                    minHeight: 4,
+                    backgroundColor: Colors.white24,
+                    valueColor: const AlwaysStoppedAnimation<Color>(kCyan),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Draft restored banner
-          if (_showDraftBanner)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFD97706)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.restore, color: Color(0xFF92400E), size: 18),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Draft restored — tap to continue where you left off.',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          ...categories.map((cat) {
+          ...grouped.keys.map((cat) {
             final items = grouped[cat]!;
             final catMax = maxMarksForCategory(cat);
             final catScored = items
                 .where((i) => _answers[i.id] == true)
                 .fold(0, (s, i) => s + i.marks);
-            return _CategorySection(
-              category: cat,
-              items: items,
-              answers: _answers,
-              scored: catScored,
-              max: catMax,
-              onChanged: _onAnswerChanged,
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      cat,
+                      style: const TextStyle(
+                        color: kCyan,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '$catScored / $catMax marks',
+                      style: const TextStyle(color: kMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...items.map(
+                  (item) => _ChecklistCard(
+                    item: item,
+                    value: _answers[item.id],
+                    onToggle: (val) => _toggle(item.id, val),
+                  ),
+                ),
+              ],
             );
           }),
           const SizedBox(height: 80),
         ],
       ),
-      bottomNavigationBar: _BottomBar(
-        answeredCount: _answers.length,
-        totalCount: allChecklistItems.length,
-        onProceed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RatingScreen(
-              resort: widget.resort,
-              answers: Map.from(_answers),
-              totalMarks: _totalMarks,
-              maxMarks: _maxMarks,
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: kBgCard2,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, -2),
             ),
-          ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _ScoreBanner extends StatelessWidget {
-  final int scored, max;
-
-  const _ScoreBanner({required this.scored, required this.max});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = max > 0 ? scored / max : 0.0;
-
-    return Container(
-      color: const Color(0xFF094449),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Score: $scored / $max',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${(pct * 100).toStringAsFixed(1)}%',
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 6,
-              backgroundColor: Colors.white24,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                pct >= 0.85
-                    ? Colors.greenAccent
-                    : pct >= 0.65
-                    ? Colors.amberAccent
-                    : Colors.redAccent,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategorySection extends StatelessWidget {
-  final String category;
-  final List<ChecklistItem> items;
-  final Map<String, bool> answers;
-  final int scored, max;
-  final void Function(String id, bool val) onChanged;
-
-  const _CategorySection({
-    required this.category,
-    required this.items,
-    required this.answers,
-    required this.scored,
-    required this.max,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D5C63),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  category,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              Text(
-                '$scored / $max marks',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...items.map(
-          (item) => _ChecklistRow(
-            item: item,
-            value: answers[item.id],
-            onChanged: (val) => onChanged(item.id, val),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ChecklistRow extends StatelessWidget {
-  final ChecklistItem item;
-  final bool? value;
-  final void Function(bool val) onChanged;
-
-  const _ChecklistRow({
-    required this.item,
-    this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      color: value == true
-          ? const Color(0xFFE8F5E9)
-          : value == false
-          ? const Color(0xFFFFF3E0)
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.label,
-                    style: const TextStyle(fontSize: 13, height: 1.4),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D5C63).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '${item.marks} marks',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF0D5C63),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        item.subcategory,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            Text(
+              '${_answers.length} / ${allChecklistItems.length} answered',
+              style: const TextStyle(color: kMuted, fontSize: 13),
             ),
-            const SizedBox(width: 8),
-            Row(
-              children: [
-                _ToggleBtn(
-                  label: 'Yes',
-                  active: value == true,
-                  color: Colors.green,
-                  onTap: () => onChanged(true),
+            const Spacer(),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kCyan,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
                 ),
-                const SizedBox(width: 4),
-                _ToggleBtn(
-                  label: 'No',
-                  active: value == false,
-                  color: Colors.orange,
-                  onTap: () => onChanged(false),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RatingScreen(
+                    resort: widget.resort,
+                    answers: Map.from(_answers),
+                    totalMarks: _totalMarks,
+                    maxMarks: _maxMarks,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('Proceed to Rating'),
             ),
           ],
         ),
@@ -332,73 +199,122 @@ class _ChecklistRow extends StatelessWidget {
   }
 }
 
-class _ToggleBtn extends StatelessWidget {
+class _ChecklistCard extends StatelessWidget {
+  final ChecklistItem item;
+  final bool? value;
+  final void Function(bool) onToggle;
+
+  const _ChecklistCard({
+    required this.item,
+    this.value,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: kBgCard,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: kBorderC, width: 1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+      ],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.label,
+                style: const TextStyle(
+                  color: kOffWhite,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: kCyanLite,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${item.marks} marks',
+                      style: const TextStyle(
+                        color: kCyan,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    item.subcategory,
+                    style: const TextStyle(color: kMuted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          children: [
+            _Btn('Yes', value == true, kGreenBtn, () => onToggle(true)),
+            const SizedBox(height: 6),
+            _Btn('No', value == false, kRedText, () => onToggle(false)),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _Btn extends StatelessWidget {
   final String label;
   final bool active;
   final Color color;
   final VoidCallback onTap;
 
-  const _ToggleBtn({
-    required this.label,
-    required this.active,
-    required this.color,
-    required this.onTap,
-  });
+  const _Btn(this.label, this.active, this.color, this.onTap);
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      width: 52,
+      height: 32,
       decoration: BoxDecoration(
-        color: active ? color : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(6),
+        color: active ? color.withOpacity(0.12) : kBgCard2,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: active ? color : kBorderC, width: 1.5),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: active ? Colors.white : Colors.grey,
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? color : kMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-    ),
-  );
-}
-
-class _BottomBar extends StatelessWidget {
-  final int answeredCount, totalCount;
-  final VoidCallback onProceed;
-
-  const _BottomBar({
-    required this.answeredCount,
-    required this.totalCount,
-    required this.onProceed,
-  });
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-    decoration: BoxDecoration(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      boxShadow: const [
-        BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, -2)),
-      ],
-    ),
-    child: Row(
-      children: [
-        Text(
-          '$answeredCount / $totalCount answered',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-        ),
-        const Spacer(),
-        ElevatedButton.icon(
-          onPressed: onProceed,
-          icon: const Icon(Icons.arrow_forward, size: 18),
-          label: const Text('Proceed to Rating'),
-        ),
-      ],
     ),
   );
 }
