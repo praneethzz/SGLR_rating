@@ -2,20 +2,20 @@ import '../models/resort.dart';
 
 const List<Resort> allResorts = [
 
-  // ── KATARI / PS PALEM ──
-  Resort(id:1, name:'Sun Rise', ownerName:'Sridhar', phone:'9951651139', area:'Katari / PS Palem', roomCount:5),
-  Resort(id:2, name:'Seagul', ownerName:'Satyanarayan', phone:'9121838043', area:'Katari / PS Palem', roomCount:21),
-  Resort(id:3, name:'Sea Dreams', ownerName:'Suresh', phone:'8309294686', area:'Katari / PS Palem', roomCount:8),
-  Resort(id:4, name:'Natural', ownerName:'Pruthvi', phone:'9246570805', area:'Katari / PS Palem', roomCount:7),
-  Resort(id:5, name:'ALA', ownerName:'Sai', phone:'7013448125', area:'Katari / PS Palem', roomCount:36),
-  Resort(id:6, name:'Golden Swan', ownerName:'Balu', phone:'8125763362', area:'Katari / PS Palem', roomCount:16),
-  Resort(id:7, name:'Mahromi Villa', ownerName:'Pavan', phone:'8978038978', area:'Katari / PS Palem', roomCount:3),
-  Resort(id:8, name:'Blue Waves', ownerName:'Tulasi Ram', phone:'9701793181', area:'Katari / PS Palem', roomCount:12),
-  Resort(id:9, name:'Satya Grand', ownerName:'Trinadh', phone:'9962661157', area:'Katari / PS Palem', roomCount:9),
-  Resort(id:10, name:'Riviera Beach Resort', ownerName:'Govinda Reddy', phone:'7981198848', area:'Katari / PS Palem', roomCount:59),
-  Resort(id:39, name:'7 Star', ownerName:'K.Kalyan & A.Koteaswarao', phone:'9700660665', area:'Katari / PS Palem', roomCount:20),
-  Resort(id:40, name:'RB Resorts', ownerName:'Prathap', phone:'9992171112', area:'Katari / PS Palem', roomCount:21),
-  Resort(id:41, name:'Reboot', ownerName:'', phone:'7093040001', area:'Katari / PS Palem', roomCount:0),
+  // ── KATARI PALEM ──
+  Resort(id:1, name:'Sun Rise', ownerName:'Sridhar', phone:'9951651139', area:'Katari Palem', roomCount:5),
+  Resort(id:2, name:'Seagul', ownerName:'Satyanarayan', phone:'9121838043', area:'Katari Palem', roomCount:21),
+  Resort(id:3, name:'Sea Dreams', ownerName:'Suresh', phone:'8309294686', area:'Katari Palem', roomCount:8),
+  Resort(id:4, name:'Natural', ownerName:'Pruthvi', phone:'9246570805', area:'Katari Palem', roomCount:7),
+  Resort(id:5, name:'ALA', ownerName:'Sai', phone:'7013448125', area:'Katari Palem', roomCount:36),
+  Resort(id:6, name:'Golden Swan', ownerName:'Balu', phone:'8125763362', area:'Katari Palem', roomCount:16),
+  Resort(id:7, name:'Mahromi Villa', ownerName:'Pavan', phone:'8978038978', area:'Katari Palem', roomCount:3),
+  Resort(id:8, name:'Blue Waves', ownerName:'Tulasi Ram', phone:'9701793181', area:'Katari Palem', roomCount:12),
+  Resort(id:9, name:'Satya Grand', ownerName:'Trinadh', phone:'9962661157', area:'Katari Palem', roomCount:9),
+  Resort(id:10, name:'Riviera Beach Resort', ownerName:'Govinda Reddy', phone:'7981198848', area:'Katari Palem', roomCount:59),
+  Resort(id:39, name:'7 Star', ownerName:'K.Kalyan & A.Koteaswarao', phone:'9700660665', area:'Katari Palem', roomCount:20),
+  Resort(id:40, name:'RB Resorts', ownerName:'Prathap', phone:'9992171112', area:'Katari Palem', roomCount:21),
+  Resort(id:41, name:'Reboot', ownerName:'', phone:'7093040001', area:'Katari Palem', roomCount:0),
 
   // ── RAMAPURAM ──
   Resort(id:11, name:'Seabreeze', ownerName:'Dr Ravi Kiran', phone:'9949236660', area:'Ramapuram', roomCount:59),

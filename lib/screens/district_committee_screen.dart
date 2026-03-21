@@ -6,6 +6,7 @@ import '../models/resort.dart';
 import '../models/inspection.dart';
 import '../services/storage_service.dart';
 import 'role_select_screen.dart';
+import 'district_inspection_detail_screen.dart';
 
 class DistrictCommitteeScreen extends StatefulWidget {
   const DistrictCommitteeScreen({super.key});
@@ -236,18 +237,18 @@ class _DistrictCommitteeScreenState extends State<DistrictCommitteeScreen> {
             itemCount: _items.length,
             itemBuilder: (_, i) => _Card(
               item: _items[i],
-              onApprove: _items[i].status == 'pending'
-                  ? () => _approve(_items[i])
-                  : null,
-              onReevaluate: _items[i].status == 'pending'
-                  ? () => _reevaluate(_items[i])
-                  : null,
-              onUnfreeze: _items[i].status == 'approved'
-                  ? () => _unfreeze(_items[i])
-                  : null,
-              onRemove: _items[i].status == 'approved'
-                  ? () => _remove(_items[i])
-                  : null,
+              onTap: () async {
+                final changed = await Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => DistrictInspectionDetailScreen(
+                    resort: _items[i].resort,
+                    result: _items[i].result,
+                    status: _items[i].status,
+                  )
+                ));
+                if (changed == true) {
+                  _load();
+                }
+              },
             ),
           ),
   );
@@ -278,17 +279,11 @@ class _DistrictCommitteeScreenState extends State<DistrictCommitteeScreen> {
 
 class _Card extends StatelessWidget {
   final _PendingItem item;
-  final VoidCallback? onApprove;
-  final VoidCallback? onReevaluate;
-  final VoidCallback? onUnfreeze;
-  final VoidCallback? onRemove;
+  final VoidCallback onTap;
 
   const _Card({
     required this.item,
-    this.onApprove,
-    this.onReevaluate,
-    this.onUnfreeze,
-    this.onRemove,
+    required this.onTap,
   });
 
   Color get _sc {
@@ -332,14 +327,11 @@ class _Card extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = item.result;
     final isApproved = item.status == 'approved';
-    const catTotals = {
-      'A. Faecal Sludge Management': 80,
-      'B. Solid Waste Management': 80,
-      'C. Grey Water Management': 40,
-    };
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: kBgCard,
@@ -456,124 +448,17 @@ class _Card extends StatelessWidget {
 
           const SizedBox(height: 14),
           const Divider(color: kBorderC),
-
-          // Category breakdown
-          ...catTotals.entries.map(
-            (e) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    e.key,
-                    style: const TextStyle(color: kOffWhite, fontSize: 13),
-                  ),
-                  Text(
-                    '— / ${e.value}',
-                    style: const TextStyle(color: kOffWhite, fontSize: 13),
-                  ),
-                ],
-              ),
+          
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              'Tap for full evaluation details',
+              style: TextStyle(color: kCyan, fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ),
-
-          const SizedBox(height: 10),
-
-          // Timestamp
-          Text(
-            'Submitted: ${_fmt(r.dateTime)}',
-            style: const TextStyle(color: kMuted, fontSize: 11),
-          ),
-
-          const SizedBox(height: 16),
-
-          // PENDING buttons
-          if (!isApproved) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kGreenBtn,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: onApprove,
-                icon: const Icon(Icons.verified, size: 18),
-                label: const Text(
-                  'Approve Rating',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: kRedText,
-                  side: const BorderSide(color: kRedText, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: onReevaluate,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text(
-                  'Send for Reevaluation',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-
-          // APPROVED buttons
-          if (isApproved) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: kCyan,
-                  side: const BorderSide(color: kCyan, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: onUnfreeze,
-                icon: const Icon(Icons.lock_open, size: 18),
-                label: const Text(
-                  'Unfreeze Rating',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: kRedText,
-                  side: const BorderSide(color: kRedText, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: onRemove,
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text(
-                  'Remove Inspection',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
-    );
+    ),
+  );
   }
 }
